@@ -1,51 +1,222 @@
 import React, { useState, useEffect } from 'react';
 import InputForm from './components/InputForm';
 
+/**
+ * Standalone helper function to convert a File to base64 Data URL
+ * @param {File} file - The file to convert
+ * @returns {Promise<string>} - Promise that resolves to base64 string (without data: prefix)
+ * @throws {Error} - If file is invalid, reading fails, or FileReader result is undefined
+ */
+const readFileAsBase64 = (file) => {
+  return new Promise((resolve, reject) => {
+    // Validate that file is a real File instance
+    if (!(file instanceof File)) {
+      const errorMsg = `Invalid file object: expected File instance, got ${typeof file}`;
+      console.error('[readFileAsBase64]', errorMsg);
+      reject(new Error(errorMsg));
+      return;
+    }
+
+    console.log('[readFileAsBase64] Starting file read:', file.name, '(' + file.size + ' bytes)');
+
+    const reader = new FileReader();
+
+    reader.onload = (event) => {
+      try {
+        // Explicitly check if reader.result exists and is a string
+        if (!reader.result) {
+          throw new Error('FileReader.result is undefined or null - file may not have been read');
+        }
+
+        if (typeof reader.result !== 'string') {
+          throw new Error(`FileReader.result is not a string: ${typeof reader.result}`);
+        }
+
+        console.log('[readFileAsBase64] FileReader.result available, length:', reader.result.length);
+
+        // Extract base64 string from data URL
+        // Format: "data:application/pdf;base64,JVBERi0xLjQK..."
+        // We need just the part after the comma
+        let base64String;
+        if (reader.result.includes(',')) {
+          base64String = reader.result.split(',')[1];
+        } else {
+          // Fallback: use full result if no comma found
+          base64String = reader.result;
+        }
+
+        if (!base64String || base64String.trim().length === 0) {
+          throw new Error('Failed to extract valid base64 data from FileReader result');
+        }
+
+        console.log('[readFileAsBase64] Successfully extracted base64, length:', base64String.length);
+        resolve(base64String);
+      } catch (err) {
+        console.error('[readFileAsBase64] Error in onload handler:', err.message);
+        reject(err);
+      }
+    };
+
+    reader.onerror = () => {
+      const errorMsg = `FileReader error event fired. Possible causes: permission denied, file was removed, or browser security restrictions`;
+      console.error('[readFileAsBase64]', errorMsg);
+      reject(new Error('Failed to read file: ' + errorMsg));
+    };
+
+    reader.onabort = () => {
+      const errorMsg = 'File reading was cancelled by the user or the browser';
+      console.error('[readFileAsBase64]', errorMsg);
+      reject(new Error(errorMsg));
+    };
+
+    // Initiate the file read as a data URL (base64)
+    console.log('[readFileAsBase64] Calling readAsDataURL...');
+    reader.readAsDataURL(file);
+  });
+};
+
 function App() {
+  // Current view state: 'input' | 'loading' | 'result' | 'error'
   const [appState, setAppState] = useState('input');
+  
+  // Store details about the submitted files
   const [submitDetails, setSubmitDetails] = useState(null);
+  
+  // Store the backend API response (analysis results)
+  const [apiResponse, setApiResponse] = useState(null);
+  
+  // Store any error messages that occur during API calls
+  const [errorMessage, setErrorMessage] = useState(null);
+  
+  // Track which loading step we're on (for the animated loading UI)
   const [loadingStep, setLoadingStep] = useState(0);
 
   // Dynamic status messages for the loading state to feel interactive and premium
   const loadingSteps = [
     { title: 'Extracting CV Metadata', desc: 'Parsing candidate document structure and reading textual blocks...' },
-    { title: 'Resolving LinkedIn Profile', desc: 'Querying LinkedIn databases and extracting profile fields...' },
+    { title: 'Resolving LinkedIn Profile', desc: 'Processing LinkedIn profile PDF and extracting profile data...' },
     { title: 'Cross-Referencing Details', desc: 'Running Gemini AI semantic mapping of experience history...' },
     { title: 'Detecting Discrepancies', desc: 'Verifying employment dates, job titles, and educational periods...' },
     { title: 'Compiling Final Report', desc: 'Formatting compliance score and structuring background checks...' }
   ];
 
+  // Effect: Animate the loading steps while API request is in progress
   useEffect(() => {
     let interval;
     if (appState === 'loading') {
       setLoadingStep(0);
+      // Update loading step every 2 seconds for visual feedback
       interval = setInterval(() => {
         setLoadingStep((prev) => {
+          // Keep animation within bounds (don't exceed total steps)
           if (prev < loadingSteps.length - 1) {
             return prev + 1;
-          } else {
-            // Automatically transitions to report once loading completes (e.g., after 10s)
-            clearInterval(interval);
-            setAppState('report');
-            return prev;
           }
+          return prev;
         });
       }, 2000);
     }
     return () => clearInterval(interval);
   }, [appState]);
 
-  const handleFormSubmit = ({ linkedinUrl, file }) => {
+  // Effect: Make API call when form is submitted
+  useEffect(() => {
+    // Only run when we have submit details and app is in loading state
+    if (submitDetails && appState === 'loading') {
+      submitToBackend(submitDetails.cvFile, submitDetails.linkedinUrl);
+    }
+  }, [submitDetails, appState]);
+
+  // Function to send CV file and LinkedIn URL to the backend API
+  const submitToBackend = async (cvFile, linkedinUrl) => {
+    try {
+      // Guard 1: Check if cvFile is defined
+      if (!cvFile) {
+        console.error('[Frontend] CV file is undefined');
+        throw new Error('CV file is missing. Please upload a CV file and try again.');
+      }
+
+      // Guard 2: Validate that cvFile is a real File instance
+      if (!(cvFile instanceof File)) {
+        console.error('[Frontend] CV file is not a File instance:', typeof cvFile);
+        throw new Error('Invalid CV file object. Please upload a valid PDF file.');
+      }
+
+      console.log('[Frontend] Starting API call...');
+      console.log('[Frontend] CV File:', cvFile.name, cvFile.size, 'bytes');
+      console.log('[Frontend] LinkedIn URL:', linkedinUrl);
+
+      // --- Convert PDF file to Base64 ---
+      // --- Send to backend as multipart/form-data ---
+      console.log('[Frontend] Preparing FormData with CV file + LinkedIn URL...');
+      
+      // Create FormData object (required for file uploads)
+      const formData = new FormData();
+      formData.append('cv', cvFile);              // Append the File object directly
+      formData.append('linkedinUrl', linkedinUrl); // Append LinkedIn URL as form field
+
+      console.log('[Frontend] Sending multipart form data to backend...');
+      const response = await fetch('http://localhost:5000/api/verify', {
+        method: 'POST',
+        // Do NOT set Content-Type header - browser will set it with boundary
+        // headers: { 'Content-Type': 'multipart/form-data' } // ← Remove this!
+        body: formData,
+      });
+
+      console.log('[Frontend] Response status:', response.status);
+
+      // Check if response status is OK (200-299 range)
+      if (!response.ok) {
+        const responseText = await response.text();
+        console.log('[Frontend] Error response:', responseText.substring(0, 500));
+        throw new Error(`Server error: ${response.status}`);
+      }
+
+      // Parse the successful response as JSON
+      const data = await response.json();
+      console.log('[Frontend] Success! Analysis result received');
+      console.log('[Frontend] Response keys:', Object.keys(data));
+      
+      // Store the API response in state
+      setApiResponse(data);
+      
+      // Transition to result view to display the data
+      setAppState('result');
+      
+    } catch (error) {
+      // Log error details for debugging
+      console.error('[Frontend] API Error:', error.message);
+      
+      // Store error message and transition to error view
+      setErrorMessage(error.message);
+      setAppState('error');
+    }
+  };
+
+  // Handler for form submission - receives CV file and LinkedIn URL from InputForm component
+  const handleFormSubmit = ({ cvFile, linkedinUrl }) => {
+    // Store file details for display in loading state
     setSubmitDetails({
-      linkedinUrl,
-      fileName: file.name,
-      fileSize: (file.size / (1024 * 1024)).toFixed(2)
+      cvFileName: cvFile.name,
+      linkedinUrl: linkedinUrl,
+      cvFile,
+      linkedinUrl
     });
+    
+    // Clear any previous errors
+    setErrorMessage(null);
+    setApiResponse(null);
+    
+    // Transition to loading state
     setAppState('loading');
   };
 
+  // Handler to reset app to initial state - called from result/error screens
   const handleReset = () => {
     setSubmitDetails(null);
+    setApiResponse(null);
+    setErrorMessage(null);
+    setLoadingStep(0);
     setAppState('input');
   };
 
@@ -117,7 +288,7 @@ function App() {
 
             <h3 className="text-2xl font-bold text-white mb-2">Analyzing Profiles</h3>
             <p className="text-slate-400 text-sm max-w-sm mx-auto mb-8 font-medium">
-              Comparing <span className="text-slate-200 font-semibold">{submitDetails.fileName}</span> with LinkedIn URL data.
+              Comparing <span className="text-slate-200 font-semibold">{submitDetails.cvFileName}</span> with <span className="text-slate-200 font-semibold">{submitDetails.linkedinUrl}</span>
             </p>
 
             {/* Stepper Display */}
@@ -155,202 +326,147 @@ function App() {
                 </div>
               ))}
             </div>
-
-            {/* Dev skip button */}
-            <button
-              onClick={() => setAppState('report')}
-              className="mt-8 text-xs font-semibold text-slate-500 hover:text-slate-300 transition-colors uppercase tracking-wider underline underline-offset-4"
-            >
-              Skip Wait & Generate Report
-            </button>
           </div>
         )}
 
-        {/* REPORT STATE */}
-        {appState === 'report' && submitDetails && (
+        {/* RESULT STATE - Display API response data */}
+        {appState === 'result' && apiResponse && (
           <div className="w-full max-w-4xl mx-auto space-y-6 animate-[fadeIn_0.5s_ease-out]">
             
-            {/* Header Compliance Overview Panel */}
-            <div className="glass p-8 sm:p-10 rounded-3xl shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-8 relative overflow-hidden">
-              <div className="absolute -top-24 -left-24 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl"></div>
+            {/* Header with Summary */}
+            <div className="glass p-8 sm:p-10 rounded-3xl shadow-2xl relative overflow-hidden">
+              <div className="absolute -top-24 -left-24 w-48 h-48 bg-green-500/10 rounded-full blur-3xl"></div>
               
-              <div className="space-y-4">
+              <div className="space-y-4 relative z-10">
                 <div className="flex items-center space-x-3">
-                  <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-                    Verification Warning
-                  </span>
-                  <span className="text-xs text-slate-500 font-semibold font-mono">
-                    ID: SHIELD-998822
+                  <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-green-500/10 text-green-400 border border-green-500/20 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+                    Verification Complete
                   </span>
                 </div>
                 
                 <div>
-                  <h2 className="text-3xl font-extrabold text-white">Consistency Assessment</h2>
-                  <p className="text-slate-400 text-sm mt-1.5 font-medium">
-                    Verified CV: <span className="text-slate-200 font-semibold">{submitDetails.fileName}</span>
+                  <h2 className="text-3xl font-extrabold text-white">Analysis Results</h2>
+                  <p className="text-slate-400 text-sm mt-2 font-medium">
+                    CV: <span className="text-slate-200 font-semibold">{apiResponse.files?.cv?.name}</span> ({apiResponse.files?.cv?.size} bytes)
                   </p>
-                  <p className="text-slate-400 text-sm mt-1 font-medium truncate max-w-lg">
-                    LinkedIn: <a href={submitDetails.linkedinUrl} target="_blank" rel="noreferrer" className="text-indigo-400 hover:underline">{submitDetails.linkedinUrl}</a>
-                  </p>
-                </div>
-              </div>
-
-              {/* Radial Score Indicator */}
-              <div className="flex items-center gap-5 bg-slate-950/40 p-6 rounded-2xl border border-slate-900">
-                <div className="relative w-24 h-24 flex items-center justify-center">
-                  <svg className="w-full h-full transform -rotate-90">
-                    <circle cx="48" cy="48" r="40" stroke="rgba(255,255,255,0.05)" strokeWidth="8" fill="transparent" />
-                    <circle cx="48" cy="48" r="40" stroke="url(#scoreGrad)" strokeWidth="8" fill="transparent"
-                      strokeDasharray={2 * Math.PI * 40}
-                      strokeDashoffset={2 * Math.PI * 40 * (1 - 0.85)} // 85% Score
-                      strokeLinecap="round" />
-                    <defs>
-                      <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#818cf8" />
-                        <stop offset="100%" stopColor="#ec4899" />
-                      </linearGradient>
-                    </defs>
-                  </svg>
-                  <div className="absolute flex flex-col items-center">
-                    <span className="text-2xl font-extrabold text-white">85%</span>
-                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Match</span>
-                  </div>
-                </div>
-                <div className="text-left space-y-1">
-                  <p className="text-sm font-bold text-slate-200">High Reliability</p>
-                  <p className="text-xs text-slate-400 leading-relaxed max-w-[160px]">
-                    Main content matches. Minor employment interval conflicts found.
+                  <p className="text-slate-400 text-sm mt-1 font-medium">
+                    LinkedIn: <span className="text-slate-200 font-semibold">{submitDetails?.linkedinUrl}</span>
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Deep Section Checks comparison */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              
-              {/* Left Column Checklist summary */}
-              <div className="md:col-span-1 glass p-6 rounded-3xl space-y-6">
-                <h3 className="text-lg font-bold text-white tracking-wide border-b border-slate-900 pb-3">
-                  Verification Checklist
-                </h3>
+            {/* Analysis Results Display */}
+            {apiResponse && (apiResponse.analysis || apiResponse.response) && (
+              <div className="glass p-8 rounded-3xl shadow-2xl">
+                <h3 className="text-xl font-bold text-white mb-4">CV vs LinkedIn Consistency Report</h3>
                 
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-3.5 bg-slate-950/40 rounded-xl border border-emerald-500/20 text-emerald-400">
-                    <div className="flex items-center space-x-3">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span className="text-sm font-semibold text-slate-200">Skills Matching</span>
+                {/* Summary Info (if available from new response format) */}
+                {apiResponse.linkedin && (
+                  <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-900/30 p-4 rounded-xl border border-slate-800/50">
+                    <div>
+                      <p className="text-slate-400 text-xs uppercase tracking-wide">LinkedIn Profile</p>
+                      <p className="text-white font-semibold mt-1">{apiResponse.linkedin.fullName || 'N/A'}</p>
+                      <p className="text-slate-300 text-sm mt-0.5">{apiResponse.linkedin.headline || 'N/A'}</p>
                     </div>
-                    <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 bg-emerald-500/10 rounded-md border border-emerald-500/20">Pass</span>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3.5 bg-slate-950/40 rounded-xl border border-emerald-500/20 text-emerald-400">
-                    <div className="flex items-center space-x-3">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span className="text-sm font-semibold text-slate-200">Education Check</span>
+                    <div>
+                      <p className="text-slate-400 text-xs uppercase tracking-wide">Experience & Education</p>
+                      <p className="text-white font-semibold mt-1">{apiResponse.linkedin.experienceCount} roles • {apiResponse.linkedin.educationCount} degrees</p>
                     </div>
-                    <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 bg-emerald-500/10 rounded-md border border-emerald-500/20">Pass</span>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3.5 bg-slate-950/40 rounded-xl border border-amber-500/20 text-amber-400">
-                    <div className="flex items-center space-x-3">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                      </svg>
-                      <span className="text-sm font-semibold text-slate-200">Work Dates</span>
+                    <div>
+                      <p className="text-slate-400 text-xs uppercase tracking-wide">Skills</p>
+                      <p className="text-white font-semibold mt-1">{apiResponse.linkedin.skillsCount} skills listed</p>
                     </div>
-                    <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 bg-amber-500/10 rounded-md border border-amber-500/20">Review</span>
                   </div>
+                )}
+                
+                {/* Gemini Analysis Report */}
+                <div className="bg-slate-950/80 p-6 rounded-2xl border border-slate-900/80 relative group">
+                  {/* Copy Button (Positioned in top-right corner) */}
+                  <button
+                    onClick={() => {
+                      const textToCopy = apiResponse.analysis || apiResponse.response;
+                      navigator.clipboard.writeText(textToCopy);
+                      // Show temporary success feedback
+                      const btn = event.target;
+                      const originalText = btn.textContent;
+                      btn.textContent = 'Copied!';
+                      setTimeout(() => {
+                        btn.textContent = originalText;
+                      }, 2000);
+                    }}
+                    className="absolute top-4 right-4 px-3 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-all duration-200 opacity-0 group-hover:opacity-100 shadow-lg"
+                  >
+                    Copy Report
+                  </button>
+                  
+                  {/* Display the analysis report as formatted text */}
+                  <pre className="text-slate-200 text-sm overflow-auto max-h-[600px] whitespace-pre-wrap break-words font-mono leading-relaxed">
+                    {apiResponse.analysis || apiResponse.response}
+                  </pre>
                 </div>
               </div>
+            )}
 
-              {/* Right Column Detailed Comparison */}
-              <div className="md:col-span-2 glass p-6 rounded-3xl space-y-6">
-                <h3 className="text-lg font-bold text-white tracking-wide border-b border-slate-900 pb-3">
-                  Identified Discrepancies
-                </h3>
-
-                <div className="space-y-4">
-                  {/* Item 1 */}
-                  <div className="bg-slate-950/30 border border-slate-950 rounded-2xl p-5 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold text-white">Google — Senior Software Engineer</span>
-                      <span className="text-[10px] font-bold tracking-widest text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 uppercase">
-                        Date Mismatch
-                      </span>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4 text-xs font-medium">
-                      <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
-                        <span className="text-slate-500 block mb-1 text-[10px] uppercase tracking-wider">Candidate CV</span>
-                        <span className="text-slate-200 font-semibold text-sm">Jan 2021 — Dec 2023</span>
-                      </div>
-                      <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
-                        <span className="text-slate-500 block mb-1 text-[10px] uppercase tracking-wider">LinkedIn Profile</span>
-                        <span className="text-slate-200 font-semibold text-sm">Jul 2020 — Nov 2023</span>
-                      </div>
-                    </div>
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                      LinkedIn profile shows the candidate started 6 months earlier than listed on the CV. Verify exact payroll or tenure certificates.
-                    </p>
-                  </div>
-
-                  {/* Item 2 */}
-                  <div className="bg-slate-950/30 border border-slate-950 rounded-2xl p-5 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold text-white">Netflix — Tech Lead</span>
-                      <span className="text-[10px] font-bold tracking-widest text-red-400 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20 uppercase">
-                        Title Mismatch
-                      </span>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4 text-xs font-medium">
-                      <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
-                        <span className="text-slate-500 block mb-1 text-[10px] uppercase tracking-wider">Candidate CV</span>
-                        <span className="text-slate-200 font-semibold text-sm">Lead Software Engineer</span>
-                      </div>
-                      <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
-                        <span className="text-slate-500 block mb-1 text-[10px] uppercase tracking-wider">LinkedIn Profile</span>
-                        <span className="text-slate-200 font-semibold text-sm">Senior Software Engineer</span>
-                      </div>
-                    </div>
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                      Job title listed as Tech/Lead on the CV, whereas LinkedIn refers to the profile as Senior Engineer. Verify delegation authority.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Bottom Actions bar */}
-            <div className="flex flex-col sm:flex-row items-center justify-between p-6 glass rounded-3xl gap-4">
+            {/* Action Buttons */}
+            <div className="flex gap-4 justify-center">
               <button
                 onClick={handleReset}
-                className="w-full sm:w-auto flex items-center justify-center px-5 py-3 rounded-xl text-slate-300 hover:text-white bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-slate-700 transition-all font-semibold text-sm"
+                className="px-6 py-3 rounded-xl text-white font-semibold bg-indigo-600 hover:bg-indigo-500 transition-all duration-300 shadow-lg hover:shadow-indigo-500/20 active:scale-[0.98]"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4.5 w-4.5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.334 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z" />
-                </svg>
-                Verify New Candidate
+                Run Another Analysis
               </button>
-              
               <button
-                type="button"
-                onClick={() => alert('Downloading PDF Report...')}
-                className="w-full sm:w-auto px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-semibold text-sm shadow-lg shadow-indigo-500/20 transition-all border border-indigo-400/20 text-center flex items-center justify-center gap-2"
+                onClick={() => {
+                  // Copy the response to clipboard for user reference
+                  navigator.clipboard.writeText(JSON.stringify(apiResponse, null, 2));
+                  alert('Response copied to clipboard!');
+                }}
+                className="px-6 py-3 rounded-xl text-slate-300 font-semibold bg-slate-800 hover:bg-slate-700 transition-all duration-300"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Download Report (PDF)
+                Copy Results
               </button>
             </div>
+          </div>
+        )}
 
+        {/* ERROR STATE - Display error message */}
+        {appState === 'error' && (
+          <div className="w-full max-w-2xl mx-auto glass p-10 rounded-3xl shadow-2xl text-center relative overflow-hidden">
+            <div className="absolute -top-24 -left-24 w-48 h-48 bg-red-500/10 rounded-full blur-3xl"></div>
+            <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-red-500/5 rounded-full blur-3xl"></div>
+
+            <div className="relative z-10">
+              {/* Error icon */}
+              <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+
+              <h3 className="text-2xl font-bold text-white mb-2">Analysis Failed</h3>
+              <p className="text-red-400 text-sm font-semibold mb-2">Error occurred during verification</p>
+              
+              {/* Display error message */}
+              <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4 mb-6">
+                <p className="text-slate-300 text-sm font-mono text-left">
+                  {errorMessage}
+                </p>
+              </div>
+
+              <p className="text-slate-400 text-xs mb-6">
+                Please check that the CV file is a valid PDF, the LinkedIn URL is valid, and the backend server is running on http://localhost:5000
+              </p>
+
+              {/* Reset button to go back */}
+              <button
+                onClick={handleReset}
+                className="px-6 py-3 rounded-xl text-white font-semibold bg-indigo-600 hover:bg-indigo-500 transition-all duration-300 shadow-lg hover:shadow-indigo-500/20 active:scale-[0.98]"
+              >
+                Try Again
+              </button>
+            </div>
           </div>
         )}
 

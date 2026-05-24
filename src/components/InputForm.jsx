@@ -1,22 +1,33 @@
 import React, { useState, useRef } from 'react';
 
 export default function InputForm({ onSubmit }) {
+  // State for the CV file upload
+  const [cvFile, setCvFile] = useState(null);
+  
+  // State for the LinkedIn profile URL input
   const [linkedinUrl, setLinkedinUrl] = useState('');
-  const [file, setFile] = useState(null);
+  
+  // Track if the file zone is currently active during drag-and-drop
   const [dragActive, setDragActive] = useState(false);
+  
+  // Store validation errors to display to the user
   const [errors, setErrors] = useState({});
-  const fileInputRef = useRef(null);
+  
+  // Create ref for the CV file input element
+  const cvFileInputRef = useRef(null);
 
+  // Handle drag enter/leave events - manage visual feedback during drag operations
   const handleDrag = (e) => {
     e.preventDefault();
     e.stopPropagation();
     if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
+      setDragActive(true); // Highlight the zone being dragged over
     } else if (e.type === 'dragleave') {
-      setDragActive(false);
+      setDragActive(false); // Remove highlight when dragging leaves
     }
   };
 
+  // Handle file drop event - user dropped a file into the drop zone
   const handleDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -28,53 +39,63 @@ export default function InputForm({ onSubmit }) {
     }
   };
 
+  // Handle file selection via the hidden file input
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       validateAndSetFile(e.target.files[0]);
     }
   };
 
+  // Validate that the file is a PDF, then update the CV state
   const validateAndSetFile = (selectedFile) => {
-    const validTypes = [
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    ];
+    // Only accept PDF files
+    const validTypes = ['application/pdf'];
     const fileExtension = selectedFile.name.split('.').pop().toLowerCase();
     
-    if (validTypes.includes(selectedFile.type) || ['pdf', 'doc', 'docx'].includes(fileExtension)) {
-      setFile(selectedFile);
-      setErrors((prev) => ({ ...prev, file: null }));
+    if (validTypes.includes(selectedFile.type) || fileExtension === 'pdf') {
+      // File is valid - store it
+      setCvFile(selectedFile);
+      setErrors((prev) => ({ ...prev, cv: null }));
     } else {
-      setErrors((prev) => ({ ...prev, file: 'Unsupported file format. Please upload a PDF or Word document.' }));
+      // Set an error if the file type is invalid
+      setErrors((prev) => ({ 
+        ...prev, 
+        cv: 'Only PDF files are allowed. Please upload a PDF document.' 
+      }));
     }
   };
 
+  // Validate form and submit - called when user clicks "Run Consistency Verification" button
   const handleSubmit = (e) => {
     e.preventDefault();
     const newErrors = {};
 
+    // Check if CV file was uploaded
+    if (!cvFile) {
+      newErrors.cv = 'CV document is required';
+    }
+
+    // Check if LinkedIn URL was provided
     if (!linkedinUrl) {
       newErrors.linkedinUrl = 'LinkedIn profile URL is required';
     } else if (!linkedinUrl.includes('linkedin.com/')) {
+      // Validate it's a proper LinkedIn URL
       newErrors.linkedinUrl = 'Please enter a valid LinkedIn URL (e.g., linkedin.com/in/username)';
     }
 
-    if (!file) {
-      newErrors.file = 'Candidate CV document is required';
-    }
-
+    // If there are any validation errors, display them and stop submission
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
 
-    // Call submit handler which transitions the app to loading
-    onSubmit({ linkedinUrl, file });
+    // Both CV and LinkedIn URL are valid - pass them to the parent App component for API submission
+    onSubmit({ cvFile, linkedinUrl });
   };
 
-  const triggerFileInput = () => {
-    fileInputRef.current.click();
+  // Trigger file input dialog for CV file
+  const triggerCvFileInput = () => {
+    cvFileInputRef.current.click();
   };
 
   return (
@@ -111,6 +132,7 @@ export default function InputForm({ onSubmit }) {
               value={linkedinUrl}
               onChange={(e) => {
                 setLinkedinUrl(e.target.value);
+                // Clear error when user starts typing
                 if (errors.linkedinUrl) setErrors((prev) => ({ ...prev, linkedinUrl: null }));
               }}
               placeholder="https://www.linkedin.com/in/candidate-profile"
@@ -129,34 +151,34 @@ export default function InputForm({ onSubmit }) {
           )}
         </div>
 
-        {/* File Drag and Drop Zone */}
+        {/* CV File Drag and Drop Zone */}
         <div>
           <label className="block text-sm font-semibold text-slate-300 mb-2">
-            Upload Candidate CV
+            Upload CV (PDF)
           </label>
           <div
             onDragEnter={handleDrag}
             onDragOver={handleDrag}
             onDragLeave={handleDrag}
             onDrop={handleDrop}
-            onClick={triggerFileInput}
+            onClick={triggerCvFileInput}
             className={`relative flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-2xl cursor-pointer transition-all duration-300 group ${
-              dragActive 
-                ? 'border-indigo-500 bg-indigo-500/5' 
-                : file 
-                  ? 'border-emerald-500/60 bg-emerald-500/5' 
+              dragActive
+                ? 'border-indigo-500 bg-indigo-500/5'
+                : cvFile
+                  ? 'border-emerald-500/60 bg-emerald-500/5'
                   : 'border-slate-800 hover:border-slate-700 bg-slate-900/40 hover:bg-slate-900/60'
             }`}
           >
             <input
               type="file"
-              ref={fileInputRef}
+              ref={cvFileInputRef}
               onChange={handleFileChange}
-              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              accept=".pdf,application/pdf"
               className="hidden"
             />
 
-            {!file ? (
+            {!cvFile ? (
               <div className="text-center">
                 <div className="mx-auto w-12 h-12 rounded-xl bg-slate-800/80 text-slate-400 flex items-center justify-center mb-3 group-hover:scale-110 group-hover:text-indigo-400 group-hover:bg-indigo-500/10 transition-all duration-300">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -164,10 +186,10 @@ export default function InputForm({ onSubmit }) {
                   </svg>
                 </div>
                 <p className="text-sm font-semibold text-slate-200">
-                  Drag and drop CV here, or <span className="text-indigo-400 group-hover:text-indigo-300 transition-colors">browse files</span>
+                  Drag CV here, or <span className="text-indigo-400 group-hover:text-indigo-300 transition-colors">browse</span>
                 </p>
                 <p className="mt-1.5 text-xs text-slate-500">
-                  Supports PDF, DOC, or DOCX (Max 10MB)
+                  PDF format only (Max 10MB)
                 </p>
               </div>
             ) : (
@@ -180,10 +202,10 @@ export default function InputForm({ onSubmit }) {
                   </div>
                   <div className="text-left">
                     <p className="text-sm font-semibold text-slate-200 truncate max-w-md">
-                      {file.name}
+                      {cvFile.name}
                     </p>
                     <p className="text-xs text-slate-500 font-medium">
-                      {(file.size / (1024 * 1024)).toFixed(2)} MB
+                      {(cvFile.size / (1024 * 1024)).toFixed(2)} MB
                     </p>
                   </div>
                 </div>
@@ -191,7 +213,7 @@ export default function InputForm({ onSubmit }) {
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setFile(null);
+                    setCvFile(null);
                   }}
                   className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors"
                 >
@@ -202,12 +224,12 @@ export default function InputForm({ onSubmit }) {
               </div>
             )}
           </div>
-          {errors.file && (
+          {errors.cv && (
             <p className="mt-2 text-xs font-semibold text-red-400 flex items-center">
               <svg className="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
               </svg>
-              {errors.file}
+              {errors.cv}
             </p>
           )}
         </div>

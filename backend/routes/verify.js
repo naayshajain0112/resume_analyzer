@@ -586,12 +586,79 @@ Each point must be a one-line specific discrepancy, or state "No red flags found
 ---
 
 HARD RULES (NON-NEGOTIABLE):
-1. Every mismatch MUST have a clear one-line explanation
-2. No generic statements like "some differences observed"
-3. No assumptions or guessing
-4. If data is missing on either side → explicitly state "Present in CV but missing in LinkedIn" OR "Present in LinkedIn but missing in CV"
-5. If no mismatches → explicitly state "No mismatches found"
-6. Never leave any section blank or incomplete
+1. Every mismatch MUST have a clear one-line explanation.
+2. No generic statements like "some differences observed".
+3. No assumptions or guessing.
+4. If data is missing on either side → explicitly state 
+   "Present in CV but missing in LinkedIn" OR 
+   "Present in LinkedIn but missing in CV".
+5. If no mismatches → explicitly state "No mismatches found".
+6. If a field is NULL or missing in LinkedIn data → 
+   DO NOT flag it as a mismatch. Simply skip that field.
+   Only compare fields that have actual values on BOTH sides.
+7. Minor name variations are NOT mismatches:
+   "Lenskart" vs "Lenskart.com" = same company, ignore.
+   "threedots" vs "threedots (Tree Common)" = same company, ignore.
+   "B.Tech" vs "Bachelor of Technology" = same degree, ignore.
+   "SDE" vs "Software Development Engineer" = same role, ignore.
+8. Short-term roles (under 3 months) present in LinkedIn 
+   but missing from CV are NOT red flags — internships and 
+   fellowships are commonly omitted from resumes.
+9. Date tolerance: if year matches and month is within 
+   1 month = Match. Do not flag minor date rounding.
+10. Only flag something as Mismatch if there is a clear, 
+    undeniable factual difference between the two sources 
+    where both sides have actual data to compare.
+11. Status should be "Major Mismatch" ONLY if a role, 
+    company or degree is completely fabricated or 
+    contradicts the other source. Not for missing fields.
+
+---
+
+## FUZZY MATCHING & NORMALIZATION RULES:
+
+When comparing CV and LinkedIn experience data, apply fuzzy matching BEFORE marking mismatches:
+
+### Company Name Normalization:
+- Ignore punctuation, casing, extra spaces, and brackets.
+- Ignore suffixes like ".com", ".co", ".in", "Inc.", "Ltd.", "Pvt.", etc.
+- Treat aliases as equivalent:
+  * "Lenskart" == "Lenskart.com"
+  * "threedots" == "threedots (Tree Common)"
+  * "Amazon" == "Amazon.com" == "Amazon Web Services"
+- Two companies match if their normalized core names are identical (after removing suffixes/punctuation).
+
+### Job Title Normalization:
+- Ignore seniority markers: "Senior", "Junior", "Lead", "Principal", "Staff", "Intern", etc.
+- Ignore formatting differences: hyphens vs spaces, abbreviations vs full words.
+- Treat titles as matching if one is a shortened/partial version of the other:
+  * "Software Developer" ≈ "Software Development Engineer"
+  * "SDE" ≈ "Software Development Engineer"
+  * "DevOps Engineer" ≈ "DevOps Engineer (Cloud Infrastructure)"
+- Compare the core responsibility, not exact wording.
+
+### Date Matching:
+- If year matches and month is within 1 month → Consider as matching dates.
+- If only year is provided → Match if years align.
+- Ignore day-level differences (e.g., "Jan 2020" vs "Jan 15, 2020").
+- If company and timeline overlap substantially on both sources → Do not flag missing titles separately.
+
+### Experience Matching Strategy:
+- Match CV roles to LinkedIn roles by company name + date proximity (same company within 6 months).
+- If company and timeline match but title differs → Compare titles using fuzzy logic above.
+- If company and timeline match → Treat as the same role even if title wording differs.
+- LinkedIn-only experiences are optional unless strict mode is enabled.
+
+### When to Report Mismatch:
+- Company names are clearly different after normalization.
+- Dates significantly differ (different year or >6 month gap in timeline).
+- Job roles are clearly unrelated (e.g., "Developer" vs "Sales Manager").
+- A role is completely fabricated or contradicts facts in the other source.
+
+### Confidence-Based Matching:
+- Prefer confidence-based fuzzy matching over exact string matching.
+- If match confidence is >80% → Treat as match.
+- Reduce false positives by allowing minor wording variations.
 
 ---
 

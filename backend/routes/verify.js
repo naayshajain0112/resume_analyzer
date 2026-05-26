@@ -36,19 +36,23 @@ const extractProfileData = (rawProfile) => {
   }
 
   // ✅ EXTRACT: Basic profile info
-  const fullName = rawProfile.full_name || null;
-  const headline = rawProfile.headline || null;
+  const fullName = rawProfile.fullName 
+    || (rawProfile.firstName && rawProfile.lastName 
+        ? `${rawProfile.firstName} ${rawProfile.lastName}` 
+        : rawProfile.firstName || rawProfile.lastName || null);
+  const headline = rawProfile.headline || rawProfile.title || null;
 
   console.log('[EXTRACT] Basic info - Name:', fullName, '| Headline:', headline);
 
   // ✅ EXTRACT: Work experiences
   const experiences = [];
-  if (Array.isArray(rawProfile.experiences) && rawProfile.experiences.length > 0) {
-    rawProfile.experiences.forEach((exp, idx) => {
-      const title = exp.title || null;
-      const company = exp.company || null;
-      const dateFrom = exp.date_from || null;
-      const dateTo = exp.date_to || null;
+  const experiencesArray = rawProfile.positions || rawProfile.experiences || rawProfile.experience || [];
+  if (Array.isArray(experiencesArray) && experiencesArray.length > 0) {
+    experiencesArray.forEach((exp, idx) => {
+      const title = exp.title || exp.jobTitle || exp.positionTitle || null;
+      const company = exp.companyName || exp.company || null;
+      const dateFrom = exp.startDate || exp.date_from || null;
+      const dateTo = exp.endDate || exp.date_to || null;
       const duration = exp.duration || null;
 
       experiences.push({
@@ -67,13 +71,14 @@ const extractProfileData = (rawProfile) => {
 
   // ✅ EXTRACT: Educations with new field names
   const educations = [];
-  if (Array.isArray(rawProfile.educations) && rawProfile.educations.length > 0) {
-    rawProfile.educations.forEach((edu, idx) => {
-      const school = edu.school || null;
-      const degree = edu.degree || null;
+  const educationsArray = rawProfile.schools || rawProfile.educations || rawProfile.education || [];
+  if (Array.isArray(educationsArray) && educationsArray.length > 0) {
+    educationsArray.forEach((edu, idx) => {
+      const school = edu.schoolName || edu.school || null;
+      const degree = edu.degreeName || edu.degree || null;
       const fieldOfStudy = edu.field_of_study || null;
-      const dateFrom = edu.date_from || null;
-      const dateTo = edu.date_to || null;
+      const dateFrom = edu.startDate || edu.date_from || null;
+      const dateTo = edu.endDate || edu.date_to || null;
 
       educations.push({
         school,
@@ -119,23 +124,11 @@ const fetchLinkedInProfile = async (linkedinUrl) => {
     throw new Error('APIFY_TOKEN environment variable is not configured');
   }
   console.log('[APIFY] Token configured (length:', APIFY_TOKEN.length, ')');
-  // ✅ GET LINKEDIN COOKIE
-  console.log('[STEP 0] Checking LINKEDIN_COOKIE from environment...');
-  console.log('[STEP 0] process.env.LINKEDIN_COOKIE value:', process.env.LINKEDIN_COOKIE ? `[SET - ${process.env.LINKEDIN_COOKIE.length} chars]` : '[UNDEFINED]');
-  const LINKEDIN_COOKIE = process.env.LINKEDIN_COOKIE;
-  if (!LINKEDIN_COOKIE) {
-    console.log("ENV CHECK:", process.env.LINKEDIN_COOKIE ? "LOADED" : "MISSING");
-    console.error('[STEP 0] ❌ LINKEDIN_COOKIE is undefined');
-    console.error('[STEP 0] Current working directory:', process.cwd());
-    console.error('[STEP 0] Filtered env keys:', Object.keys(process.env).filter(k => k.toUpperCase().includes('LINKEDIN') || k.toUpperCase().includes('APIFY') || k.toUpperCase().includes('GEMINI')));
-    throw new Error('LINKEDIN_COOKIE environment variable is not configured');
-  }
-  console.log('[APIFY] ✅ LinkedIn cookie configured (length:', LINKEDIN_COOKIE.length, ')');
+  // ✅ LINKEDIN COOKIE - Not required for this Apify actor
+  // The harvestapi~linkedin-profile-scraper does not require a cookie
   
   // DEBUG: Log the LinkedIn URL being scraped
   console.log("SCRAPING URL:", linkedinUrl);
-  console.log("LINKEDIN COOKIE LENGTH:", LINKEDIN_COOKIE ? LINKEDIN_COOKIE.length : 0);
-  console.log("LINKEDIN COOKIE FIRST 20 CHARS:", LINKEDIN_COOKIE ? LINKEDIN_COOKIE.substring(0, 20) : "MISSING");
   
   try {
     // ═══════════════════════════════════════════════════════════════════════════
@@ -146,8 +139,8 @@ const fetchLinkedInProfile = async (linkedinUrl) => {
     console.log('[STEP 1] POST to:', startRunUrl.substring(0, 80) + '...');
 
     const requestBody = {
-      urls: [{ url: linkedinUrl }],
-      cookie: `li_at=${LINKEDIN_COOKIE}`,
+      profileScraperMode: "Profile details no email ($4 per 1k)",
+      queries: [linkedinUrl],
     };
     console.log('[STEP 1] Request body URLs:', requestBody.urls);
     console.log('[STEP 1] Cookie configured: yes');
@@ -485,11 +478,11 @@ router.post('/verify', upload.single('cv'), async (req, res) => {
         console.log('[STEP 6] Full LinkedIn response (first 500 chars):', JSON.stringify(linkedinData, null, 2).substring(0, 500));
         
         // Validate that LinkedIn data has actual content - safely check properties
-        const hasExperience = Array.isArray(linkedinData.experience) && linkedinData.experience.length > 0;
-        const hasEducation = Array.isArray(linkedinData.education) && linkedinData.education.length > 0;
-        const hasSkills = Array.isArray(linkedinData.skills) && linkedinData.skills.length > 0;
+        const hasExperience = Array.isArray(linkedinData.experiences) && linkedinData.experiences.length > 0;
+        const hasEducation = Array.isArray(linkedinData.educations) && linkedinData.educations.length > 0;
+        const hasName = linkedinData.fullName !== null && linkedinData.fullName !== undefined;
         
-        if (!hasExperience && !hasEducation && !hasSkills) {
+        if (!hasExperience && !hasEducation && !hasName) {
           linkedinError = 'LinkedIn profile returned empty data';
           linkedinData = null;
           console.log('[STEP 6] LinkedIn data is empty, treating as failed fetch');
@@ -530,62 +523,100 @@ You have TWO sources:
 
 ${linkedinSection}
 
-Compare ONLY the following. Ignore phone, email, and description length.
+LINKEDIN URL: ${linkedinUrl}
 
-================================================
-CV VS LINKEDIN CONSISTENCY VERIFICATION REPORT
-================================================
+---
 
-Candidate Name: [Full name from CV]
-LinkedIn: ${linkedinUrl}
+## Step 1: Identity Check
+Compare Full Name and Location from both sources.
+Output:
+Status: Match / Partial Match / Mismatch
+Mismatch Details: (one-line per mismatch, or "No mismatches found")
 
-1. IDENTITY CHECK
-   - Full Name  → CV: [name] | LinkedIn: [name] | ✅ Match / ❌ Mismatch / ⚠️ Not Accessible
-   - Location   → CV: [location] | LinkedIn: [location] | ✅ Match / ❌ Mismatch / ⚠️ Not Accessible
-   - Mismatch Details: [one line per mismatch or "No mismatches found"]
+---
 
-2. EXPERIENCE VALIDATION (MOST IMPORTANT)
-   List EVERY role from EITHER source:
-   | Job Title | Company | CV Dates | LinkedIn Dates | Status |
-   (✅ Match, ❌ Mismatch, ⚠️ Missing from one source)
+## Step 2: Experience Validation (MOST CRITICAL)
+Compare every role from BOTH sources:
+- Company names
+- Job titles
+- Employment dates (month & year)
 
-   Mismatch Details:
-   - [one line per mismatch or "No mismatches found"]
+Flag:
+- Missing roles in either CV or LinkedIn
+- Title mismatches
+- Date inconsistencies
+- Company name inconsistencies
 
-3. EDUCATION CHECK
-   List EVERY degree from EITHER source:
-   | Degree | Institution | CV Years | LinkedIn Years | Status |
+Output:
+Status: Fully Matching / Minor Variance / Major Mismatch
+Mismatch Details: (one-line per mismatch, or "No mismatches found")
 
-   Mismatch Details:
-   - [one line per mismatch or "No mismatches found"]
+---
 
-4. SKILLS CONSISTENCY
-   - On CV but NOT on LinkedIn: [list or "None"]
-   - On LinkedIn but NOT on CV: [list or "None"]
-   - Mismatch Details: [one line per gap or "No mismatches found"]
+## Step 3: Education Check
+Compare every degree from BOTH sources:
+- Degree name
+- Institution
+- Years
 
-5. RED FLAGS 🚩
-   - Missing roles:        [list or "None"]
-   - Date inconsistencies: [list or "None"]
-   - Education mismatch:   [list or "None"]
-   - Skill gaps:           [list or "None"]
-   - Title mismatch:       [list or "None"]
+Output:
+Status: Match / Partial Match / Mismatch
+Mismatch Details: (one-line per mismatch, or "No mismatches found")
 
-6. FINAL VERDICT
-   Verdict: [ ✅ Strongly Consistent | ⚠️ Needs Clarification | ❌ Not Consistent ]
-   Reason: [2-3 sentences]
+---
 
-================================================
+## Step 4: Skills Consistency
+Compare core skills and technologies from both sources.
+If a skill is present in one and missing in the other → mismatch.
 
-STRICT RULES:
-- Do NOT assume or fabricate any information
-- If something exists in one source but not the other → mismatch
-- Every mismatch needs a one-line explanation
-- Complete every section even if data is missing
-- Never leave a section blank
-- You MUST complete every row of every table. Do NOT stop mid-table.
-- If a field is unknown, write "N/A"
-- Never leave a table incomplete. Every row must have complete information.
+Output:
+Status: Strong / Partial / Weak
+Mismatch Details: (one-line per mismatch, or "No mismatches found")
+
+---
+
+## Step 5: Red Flags 🚨
+List only clear structural inconsistencies:
+- Missing roles
+- Education mismatch
+- Skill gaps
+- Title inconsistencies
+Each point must be a one-line specific discrepancy, or state "No red flags found"
+
+---
+
+HARD RULES (NON-NEGOTIABLE):
+1. Every mismatch MUST have a clear one-line explanation
+2. No generic statements like "some differences observed"
+3. No assumptions or guessing
+4. If data is missing on either side → explicitly state "Present in CV but missing in LinkedIn" OR "Present in LinkedIn but missing in CV"
+5. If no mismatches → explicitly state "No mismatches found"
+6. Never leave any section blank or incomplete
+
+---
+
+OUTPUT FORMAT (follow exactly):
+
+Candidate Name: [full name]
+
+Identity Check:
+Status: [Match / Partial Match / Mismatch]
+Mismatch Details: [details or "No mismatches found"]
+
+Experience Validation:
+Status: [Fully Matching / Minor Variance / Major Mismatch]
+Mismatch Details: [details or "No mismatches found"]
+
+Education Check:
+Status: [Match / Partial Match / Mismatch]
+Mismatch Details: [details or "No mismatches found"]
+
+Skills Consistency:
+Status: [Strong / Partial / Weak]
+Mismatch Details: [details or "No mismatches found"]
+
+Red Flags 🚨:
+[list or "No red flags found"]
 `;
 
     // 4. Call Gemini

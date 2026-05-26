@@ -1,0 +1,9 @@
+# Dependency directories
+node_modules/
+
+# Local environment variable file (contains secrets like API keys)
+.env
+
+# Uploads folder (store uploaded resumes locally, but do not commit them)
+uploads/*
+!uploads/.gitkeep

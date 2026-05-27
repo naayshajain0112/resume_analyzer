@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import InputForm from './components/InputForm';
+import ReportRenderer from './components/ReportRenderer';
 
 /**
  * Standalone helper function to convert a File to base64 Data URL
@@ -436,27 +437,25 @@ function App() {
 
         {/* RESULT STATE - Display API response data */}
         {appState === 'result' && apiResponse && (
-          <div className="w-full max-w-4xl mx-auto space-y-6 animate-[fadeIn_0.5s_ease-out]">
+          <div className="w-full max-w-4xl mx-auto space-y-5 animate-[fadeIn_0.5s_ease-out]">
             
             {/* Header with Summary */}
-            <div className="glass p-8 sm:p-10 rounded-3xl shadow-2xl relative overflow-hidden">
-              <div className="absolute -top-24 -left-24 w-48 h-48 bg-green-500/10 rounded-full blur-3xl"></div>
-              
-              <div className="space-y-4 relative z-10">
-                <div className="flex items-center space-x-3">
-                  <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-green-500/10 text-green-400 border border-green-500/20 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+            <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2.5">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-100">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
                     Verification Complete
                   </span>
                 </div>
                 
                 <div>
-                  <h2 className="text-3xl font-extrabold text-white">Analysis Results</h2>
-                  <p className="text-slate-400 text-sm mt-2 font-medium">
-                    CV: <span className="text-slate-200 font-semibold">{apiResponse.files?.cv?.name}</span> ({apiResponse.files?.cv?.size} bytes)
+                  <h2 className="text-2xl font-semibold text-gray-800">Analysis Results</h2>
+                  <p className="text-gray-600 text-sm mt-3">
+                    CV: <span className="font-medium text-gray-700">{apiResponse.files?.cv?.name}</span> ({apiResponse.files?.cv?.size} bytes)
                   </p>
-                  <p className="text-slate-400 text-sm mt-1 font-medium">
-                    LinkedIn: <span className="text-slate-200 font-semibold">{submitDetails?.linkedinUrl}</span>
+                  <p className="text-gray-600 text-sm mt-1">
+                    LinkedIn: <span className="font-medium text-gray-700">{submitDetails?.linkedinUrl}</span>
                   </p>
                 </div>
               </div>
@@ -464,52 +463,63 @@ function App() {
 
             {/* Analysis Results Display */}
             {apiResponse && (apiResponse.analysis || apiResponse.response) && (
-              <div className="glass p-8 rounded-3xl shadow-2xl">
-                <h3 className="text-xl font-bold text-white mb-4">CV vs LinkedIn Consistency Report</h3>
-                
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                {/* Report Header */}
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100 px-6 sm:px-8 py-7 sm:py-8 border-b border-gray-200">
+                  <h2 className="text-xl sm:text-2xl font-semibold text-gray-800">CV vs LinkedIn Consistency Report</h2>
+                  <p className="text-gray-600 text-sm mt-1">Professional verification analysis powered by Gemini AI</p>
+                </div>
+
                 {/* Summary Info (if available from new response format) */}
                 {apiResponse.linkedin && (
-                  <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-900/30 p-4 rounded-xl border border-slate-800/50">
-                    <div>
-                      <p className="text-slate-400 text-xs uppercase tracking-wide">LinkedIn Profile</p>
-                      <p className="text-white font-semibold mt-1">{apiResponse.linkedin.fullName || 'N/A'}</p>
-                      <p className="text-slate-300 text-sm mt-0.5">{apiResponse.linkedin.headline || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-400 text-xs uppercase tracking-wide">Experience & Education</p>
-                      <p className="text-white font-semibold mt-1">{apiResponse.linkedin.experienceCount} roles • {apiResponse.linkedin.educationCount} degrees</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-400 text-xs uppercase tracking-wide">Skills</p>
-                      <p className="text-white font-semibold mt-1">{apiResponse.linkedin.skillsCount} skills listed</p>
+                  <div className="border-b border-gray-100 px-6 sm:px-8 py-6 sm:py-7">
+                    <h3 className="text-base font-medium text-gray-800 mb-5">Profile Summary</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <p className="text-gray-600 text-xs uppercase tracking-wide font-medium mb-2">LinkedIn Profile</p>
+                        <p className="text-gray-800 font-medium text-base">{apiResponse.linkedin.fullName || 'N/A'}</p>
+                        <p className="text-gray-600 text-xs mt-2">{apiResponse.linkedin.headline || 'N/A'}</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <p className="text-gray-600 text-xs uppercase tracking-wide font-medium mb-2">Experience & Education</p>
+                        <p className="text-gray-800 font-medium text-base">{apiResponse.linkedin.experienceCount || 0} roles</p>
+                        <p className="text-gray-600 text-xs mt-2">{apiResponse.linkedin.educationCount || 0} degrees</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <p className="text-gray-600 text-xs uppercase tracking-wide font-medium mb-2">Skills</p>
+                        <p className="text-gray-800 font-medium text-base">{apiResponse.linkedin.skillsCount || 0}</p>
+                        <p className="text-gray-600 text-xs mt-2">skills listed</p>
+                      </div>
                     </div>
                   </div>
                 )}
-                
-                {/* Gemini Analysis Report */}
-                <div className="bg-slate-950/80 p-6 rounded-2xl border border-slate-900/80 relative group">
-                  {/* Copy Button (Positioned in top-right corner) */}
-                  <button
-                    onClick={() => {
-                      const textToCopy = apiResponse.analysis || apiResponse.response;
-                      navigator.clipboard.writeText(textToCopy);
-                      // Show temporary success feedback
-                      const btn = event.target;
-                      const originalText = btn.textContent;
-                      btn.textContent = 'Copied!';
-                      setTimeout(() => {
-                        btn.textContent = originalText;
-                      }, 2000);
-                    }}
-                    className="absolute top-4 right-4 px-3 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-all duration-200 opacity-0 group-hover:opacity-100 shadow-lg"
-                  >
-                    Copy Report
-                  </button>
+
+                {/* Gemini Analysis Report - Professional Markdown Rendering */}
+                <div className="px-6 sm:px-8 py-7 sm:py-8">
+                  {/* Copy Button */}
+                  <div className="flex justify-end mb-6">
+                    <button
+                      onClick={() => {
+                        const textToCopy = apiResponse.analysis || apiResponse.response;
+                        navigator.clipboard.writeText(textToCopy);
+                        // Show temporary success feedback
+                        const btn = event.target;
+                        const originalText = btn.textContent;
+                        btn.textContent = 'Copied!';
+                        setTimeout(() => {
+                          btn.textContent = originalText;
+                        }, 2000);
+                      }}
+                      className="px-3.5 py-2 text-xs sm:text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                    >
+                      📋 Copy Report
+                    </button>
+                  </div>
                   
-                  {/* Display the analysis report as formatted text */}
-                  <pre className="text-slate-200 text-sm overflow-auto max-h-[600px] whitespace-pre-wrap break-words font-mono leading-relaxed">
-                    {apiResponse.analysis || apiResponse.response}
-                  </pre>
+                  {/* Display the analysis report with professional markdown rendering */}
+                  <div className="text-gray-700">
+                    <ReportRenderer content={apiResponse.analysis || apiResponse.response} />
+                  </div>
                 </div>
               </div>
             )}

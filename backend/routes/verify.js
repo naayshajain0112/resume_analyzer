@@ -35,6 +35,15 @@ const extractProfileData = (rawProfile) => {
     throw new Error('Profile data is null or undefined');
   }
 
+  // 🔍 DEBUG: Print the full raw profile structure
+  console.log('\n╔═══════════════════════════════════════════════════╗');
+  console.log('║        [DEBUG] RAW PROFILE STRUCTURE              ║');
+  console.log('╚═══════════════════════════════════════════════════╝\n');
+  console.log('[DEBUG] Raw profile type:', typeof rawProfile);
+  console.log('[DEBUG] Raw profile keys:', Object.keys(rawProfile).sort());
+  console.log('[DEBUG] Full raw profile:');
+  console.log(JSON.stringify(rawProfile, null, 2).substring(0, 2000)); // First 2000 chars
+
   // ✅ EXTRACT: Basic profile info
   const fullName = rawProfile.fullName
     || (rawProfile.firstName && rawProfile.lastName
@@ -42,18 +51,81 @@ const extractProfileData = (rawProfile) => {
       : rawProfile.firstName || rawProfile.lastName || null);
   const headline = rawProfile.headline || rawProfile.title || null;
 
-  console.log('[EXTRACT] Basic info - Name:', fullName, '| Headline:', headline);
+  console.log('\n[EXTRACT] Basic info - Name:', fullName, '| Headline:', headline);
 
   // ✅ EXTRACT: Work experiences
   const experiences = [];
   const experiencesArray = rawProfile.positions || rawProfile.experiences || rawProfile.experience || [];
+  
+  console.log('\n[EXTRACT] Searching for experiences array...');
+  console.log('[EXTRACT] Found experiencesArray key location');
+  console.log('[EXTRACT] experiencesArray is array?', Array.isArray(experiencesArray));
+  console.log('[EXTRACT] experiencesArray length:', experiencesArray.length);
+
   if (Array.isArray(experiencesArray) && experiencesArray.length > 0) {
+    console.log('\n╔═══════════════════════════════════════════════════╗');
+    console.log('║     [DEBUG] EXPERIENCE OBJECTS DETAILED DUMP      ║');
+    console.log('╚═══════════════════════════════════════════════════╝\n');
+
     experiencesArray.forEach((exp, idx) => {
-      const title = exp.title || exp.jobTitle || exp.positionTitle || null;
-      const company = exp.companyName || exp.company || null;
-      const dateFrom = exp.startDate || exp.date_from || null;
-      const dateTo = exp.endDate || exp.date_to || null;
-      const duration = exp.duration || null;
+      console.log(`\n--- EXPERIENCE ${idx + 1} ---`);
+      console.log('[RAW EXPERIENCE] Full object:');
+      console.log(JSON.stringify(exp, null, 2));
+      console.log('[RAW EXPERIENCE] All keys:', Object.keys(exp).sort());
+
+      // 🔍 DEBUG: Show all possible title-related fields
+      console.log('[RAW EXPERIENCE] Checking title fields:');
+      console.log('  - title:', exp.title);
+      console.log('  - jobTitle:', exp.jobTitle);
+      console.log('  - positionTitle:', exp.positionTitle);
+      console.log('  - position:', exp.position);
+      console.log('  - role:', exp.role);
+      console.log('  - job_title:', exp.job_title);
+      console.log('  - position_title:', exp.position_title);
+      console.log('  - headline:', exp.headline);
+      console.log('  - subtitle:', exp.subtitle);
+      console.log('  - description:', exp.description?.substring(0, 50) + '...' || 'N/A');
+
+      // ✅ FIX: Enhanced fallback logic with more field names
+      const title = exp.title 
+        || exp.position 
+        || exp.jobTitle 
+        || exp.positionTitle 
+        || exp.role 
+        || exp.job_title 
+        || exp.position_title 
+        || exp.headline 
+        || exp.subtitle 
+        || 'Title Not Available';
+
+      // ✅ FIX: Enhanced company name fallback
+      const company = exp.companyName 
+        || exp.company 
+        || exp.company_name 
+        || exp.employer 
+        || exp.organizationName 
+        || exp.organization 
+        || 'Company Not Available';
+
+      // ✅ FIX: Better date extraction
+      const dateFrom = exp.startDate 
+        || exp.date_from 
+        || exp.start_date 
+        || exp.dateFrom 
+        || null;
+
+      const dateTo = exp.endDate 
+        || exp.date_to 
+        || exp.end_date 
+        || exp.dateTo 
+        || null;
+
+      const duration = exp.duration 
+        || exp.employment_duration 
+        || null;
+
+      console.log('[TRANSFORMED EXPERIENCE] Title resolved to:', title);
+      console.log('[TRANSFORMED EXPERIENCE] Company resolved to:', company);
 
       experiences.push({
         title,
@@ -63,22 +135,30 @@ const extractProfileData = (rawProfile) => {
         duration,
       });
 
-      console.log(`[EXTRACT] Experience ${idx + 1}: ${title} at ${company} (${duration})`);
+      console.log(`[EXTRACT] Experience ${idx + 1}: "${title}" at "${company}"`);
     });
   } else {
-    console.log('[EXTRACT] No work experiences found');
+    console.log('[EXTRACT] ⚠️  No work experiences found in profile');
   }
 
   // ✅ EXTRACT: Educations with new field names
   const educations = [];
   const educationsArray = rawProfile.schools || rawProfile.educations || rawProfile.education || [];
+  
+  console.log('\n[EXTRACT] Searching for education array...');
+  console.log('[EXTRACT] educationsArray length:', educationsArray.length);
+
   if (Array.isArray(educationsArray) && educationsArray.length > 0) {
     educationsArray.forEach((edu, idx) => {
-      const school = edu.schoolName || edu.school || null;
-      const degree = edu.degreeName || edu.degree || null;
-      const fieldOfStudy = edu.field_of_study || null;
-      const dateFrom = edu.startDate || edu.date_from || null;
-      const dateTo = edu.endDate || edu.date_to || null;
+      console.log(`\n--- EDUCATION ${idx + 1} ---`);
+      console.log('[RAW EDUCATION] Full object:');
+      console.log(JSON.stringify(edu, null, 2).substring(0, 500));
+
+      const school = edu.schoolName || edu.school || edu.school_name || null;
+      const degree = edu.degreeName || edu.degree || edu.degree_name || null;
+      const fieldOfStudy = edu.field_of_study || edu.fieldOfStudy || edu.field || null;
+      const dateFrom = edu.startDate || edu.date_from || edu.start_date || null;
+      const dateTo = edu.endDate || edu.date_to || edu.end_date || null;
 
       educations.push({
         school,
@@ -88,11 +168,18 @@ const extractProfileData = (rawProfile) => {
         dateTo,
       });
 
-      console.log(`[EXTRACT] Education ${idx + 1}: ${degree} in ${fieldOfStudy} from ${school}`);
+      console.log(`[EXTRACT] Education ${idx + 1}: ${degree} from ${school}`);
     });
   } else {
-    console.log('[EXTRACT] No educations found');
+    console.log('[EXTRACT] ⚠️  No educations found in profile');
   }
+
+  // ✅ EXTRACT: Skills
+  const skills = (rawProfile.skills || [])
+    .map(skill => typeof skill === 'string' ? skill : skill.name || skill)
+    .filter(skill => skill && skill.length > 0);
+
+  console.log('[EXTRACT] Skills found:', skills.length);
 
   // ✅ RETURN: Cleaned extracted object
   const extractedData = {
@@ -100,9 +187,16 @@ const extractProfileData = (rawProfile) => {
     headline,
     experiences,
     educations,
+    skills,
   };
 
+  console.log('\n╔═══════════════════════════════════════════════════╗');
+  console.log('║         [EXTRACT] FINAL EXTRACTED DATA            ║');
+  console.log('╚═══════════════════════════════════════════════════╝\n');
   console.log('[EXTRACT] ✅ Successfully extracted profile data');
+  console.log('[EXTRACT] Final extracted object:');
+  console.log(JSON.stringify(extractedData, null, 2));
+
   return extractedData;
 };
 
@@ -508,6 +602,23 @@ router.post('/verify', upload.single('cv'), async (req, res) => {
     const linkedinSection = linkedinData
       ? `Here is the candidate's LinkedIn profile data in JSON format:\n${JSON.stringify(linkedinData, null, 2)}`
       : `LinkedIn data could not be fetched. Reason: ${linkedinError || 'Unknown error'}. Base analysis on CV only and flag all sections as "LinkedIn Not Accessible".`;
+
+    // 🔍 DEBUG: Print LinkedIn data being sent to Gemini
+    if (linkedinData) {
+      console.log('\n╔═══════════════════════════════════════════════════╗');
+      console.log('║   [DEBUG] LINKEDIN DATA SENT TO GEMINI            ║');
+      console.log('╚═══════════════════════════════════════════════════╝\n');
+      console.log('[LINKEDIN DATA] Full object:');
+      console.log(JSON.stringify(linkedinData, null, 2));
+      console.log('\n[LINKEDIN DATA] Experience entries:');
+      if (linkedinData.experiences && Array.isArray(linkedinData.experiences)) {
+        linkedinData.experiences.forEach((exp, idx) => {
+          console.log(`  Experience ${idx + 1}:`, JSON.stringify(exp, null, 2));
+        });
+      } else {
+        console.log('  ⚠️  No experiences found');
+      }
+    }
 
     // Validate that linkedinSection is a string
     if (!linkedinSection || typeof linkedinSection !== 'string') {

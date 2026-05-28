@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import InputForm from './components/InputForm';
 import ReportRenderer from './components/ReportRenderer';
 import { exportComponentToPDF } from './utils/pdfExport';
+import { API_URL, API_ENDPOINTS } from './config';
 
 /**
  * Standalone helper function to convert a File to base64 Data URL
@@ -164,7 +165,8 @@ function App() {
       formData.append('linkedinUrl', linkedinUrl); // Append LinkedIn URL as form field
 
       console.log('[Frontend] Sending multipart form data to backend...');
-      const response = await fetch('http://localhost:5000/api/verify', {
+      console.log('[Frontend] API URL:', `${API_URL}${API_ENDPOINTS.VERIFY}`);
+      const response = await fetch(`${API_URL}${API_ENDPOINTS.VERIFY}`, {
         method: 'POST',
         // Do NOT set Content-Type header - browser will set it with boundary
         // headers: { 'Content-Type': 'multipart/form-data' } // ← Remove this!
@@ -535,7 +537,7 @@ function App() {
               </div>
 
               <p className="text-slate-400 text-xs mb-6">
-                Please check that the CV file is a valid PDF, the LinkedIn URL is valid, and the backend server is running on http://localhost:5000
+                Please check that the CV file is a valid PDF, the LinkedIn URL is valid, and the backend server is running on {API_URL}
               </p>
 
               {/* Reset button to go back */}

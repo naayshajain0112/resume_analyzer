@@ -57,3 +57,106 @@
 .animate-pulse-slow {
   animation: pulse-slow 3s ease-in-out infinite;
 }
+
+/* ⭐ PDF Export Mode - Reduce visual heaviness to optimize file size */
+.pdf-export-mode {
+  /* Ensure all content is visible for rendering */
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+
+  /* Remove animations and transitions from all children */
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* Simplify shadows - remove expensive blur effects */
+  .shadow-sm,
+  .shadow-md,
+  .shadow-lg,
+  .shadow-xl,
+  .shadow-2xl,
+  [class*="shadow"] {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  }
+
+  /* Remove blur effects */
+  .backdrop-blur,
+  .backdrop-blur-md,
+  .backdrop-blur-lg,
+  .glass {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Simplify gradients */
+  [class*="bg-gradient"] {
+    background-image: linear-gradient(to right, #f3f4f6, #f9fafb) !important;
+  }
+
+  /* Remove complex borders */
+  .border {
+    border-width: 1px !important;
+    border-color: #e5e7eb !important;
+  }
+
+  /* Optimize blockquotes */
+  blockquote {
+    border-left: 3px solid #d1d5db !important;
+    background: #f9fafb !important;
+    box-shadow: none !important;
+    display: block !important;
+  }
+
+  /* Optimize tables */
+  table {
+    box-shadow: none !important;
+    border-collapse: collapse !important;
+    display: table !important;
+  }
+
+  table thead {
+    background: #f3f4f6 !important;
+    display: table-header-group !important;
+  }
+
+  table tbody {
+    display: table-row-group !important;
+  }
+
+  table tr {
+    display: table-row !important;
+  }
+
+  table td,
+  table th {
+    display: table-cell !important;
+  }
+
+  /* Remove hover effects for PDF */
+  .hover\:shadow-lg:hover,
+  .hover\:bg-opacity-80:hover,
+  [class*="hover"]:hover {
+    box-shadow: inherit !important;
+    background-color: inherit !important;
+    transform: inherit !important;
+  }
+
+  /* Optimize code blocks */
+  code,
+  pre {
+    box-shadow: none !important;
+    background: #f3f4f6 !important;
+    color: #1f2937 !important;
+    display: block !important;
+  }
+
+  /* Optimize status badges */
+  .bg-red-50,
+  .bg-yellow-50,
+  .bg-green-50 {
+    box-shadow: none !important;
+    display: inline-block !important;
+  }
+}

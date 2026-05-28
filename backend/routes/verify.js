@@ -660,6 +660,12 @@ You MUST:
 - Avoid false positives caused by wording differences
 - Report only clear factual inconsistencies
 
+⭐ CRITICAL: Distinguish actual inconsistencies from extraction errors (OCR/parsing/null fields)
+   - Spelling distortions or partial text captures may be OCR corruption
+   - Missing LinkedIn fields may be API limitations (null values)
+   - If discrepancy appears to be extraction error → ⚠️ Mark as "Possible Extraction Issue"
+   - ONLY mark as 🔴 Major Contradiction if factually falsifiable
+
 ==================================================
 SCOPE RULES
 ==================================================
@@ -733,62 +739,89 @@ Verification Date:
 # FINAL VERDICT
 
 Overall Status:
-- 🟢 VERIFIED
+- 🟢 VERIFIED (primary data matches, only minor omissions)
 OR
-- 🟡 VERIFIED WITH MINOR VARIANCE
+- 🟡 VERIFIED WITH MINOR VARIANCE (typical resume curation differences)
 OR
-- 🔴 HIGH RISK PROFILE
+- 🟡 NEEDS CLARIFICATION (moderate inconsistencies detected, but not provably false)
+OR
+- ⚠️ EXTRACTION ISSUES NOTED (potential OCR/parsing problems detected, technical issue not candidate risk)
+OR
+- 🔴 FLAGGED FOR REVIEW (major factual contradictions detected, requires investigation)
 
 Confidence Score:
 - XX%
 
 Overall Risk Level:
-- Low
-- Medium
-- High
+- 🟢 Low Risk (verified or minor variance, normal curation only)
+- 🟡 Medium Risk (needs clarification or moderate inconsistencies, but not provably false)
+- 🔴 High Risk (ONLY for major factual contradictions or demonstrably fabricated data)
+
+⭐ RISK SCORING GUIDELINES:
+- Extraction issues ≠ High Risk
+- Resume curation ≠ High Risk
+- Omitted short roles ≠ High Risk
+- Missing LinkedIn data ≠ High Risk
+- Only provably false/contradictory data = High Risk
 
 Final Analyst Notes:
 - Professional recruiter-style conclusion
-- Mention overall consistency level
-- Mention whether discrepancies are explainable or concerning
-- Mention whether profile appears reliable
+- Explain overall profile consistency and whether it appears reliable
+- Distinguish between normal curation and concerning inconsistencies
+- Note if issues appear extraction-related (technical, not candidate risk)
+- Assess whether profile appears trustworthy
+- Provide confidence reasoning
+- Mention typical vs atypical patterns observed
 
 --------------------------------------------------
 
 # Verification Summary
 
 - Identity:
-  🟢 Match
-  OR
-  🟡 Partial Match
-  OR
-  🔴 Mismatch
-
-- Experience:
-  🟢 Fully Matching
+  🟢 Verified
   OR
   🟡 Minor Variance
   OR
-  🔴 Major Mismatch
+  ⚠️ Extraction Issues
+  OR
+  🔴 Major Contradiction
+
+- Experience:
+  🟢 Verified
+  OR
+  🟡 Minor Variance (typical resume curation)
+  OR
+  🟡 Needs Clarification
+  OR
+  ⚠️ Extraction Issues (OCR/API limitations)
+  OR
+  🔴 Major Factual Contradiction
 
 - Education:
-  🟢 Match
+  🟢 Verified
   OR
-  🟡 Partial Match
+  🟡 Minor Variance (normal variations/omissions)
   OR
-  🔴 Mismatch
+  ⚠️ Extraction Issues
+  OR
+  🔴 Major Contradiction
 
 - Skills:
   🟢 Strong
   OR
   🟡 Partial
   OR
+  ⚠️ Data Unavailable
+  OR
   🔴 Weak
 
 Overall Assessment:
 - Short professional summary
-- Mention overall profile consistency
-- Mention whether discrepancies are minor, moderate, or serious
+- Explain overall profile consistency
+- Distinguish between normal curation and concerning inconsistencies
+- Provide confidence reasoning
+- Note typical vs atypical variations found
+- If extraction issues: emphasize technical nature, not candidate integrity concerns
 
 ==================================================
 **STEP 1 — IDENTITY CHECK**
@@ -830,6 +863,12 @@ Compare EVERY role from BOTH sources:
 - Employment dates
 - Employment duration
 
+⭐ IMPORTANT: Apply professional context when evaluating:
+- Is this a short-term role (< 6 months)? → Minor Variance if omitted
+- Is this an internship? → Minor Variance if omitted (unless contradictory)
+- Is this from early career (> 3-5 years ago)? → Minor Variance if omitted
+- Is this a primary career-defining role? → Must match closely
+
 For EACH role comparison use this structure:
 
 --------------------------------------------------
@@ -841,47 +880,54 @@ For EACH role comparison use this structure:
 - LinkedIn Role:
 - CV Dates:
 - LinkedIn Dates:
+- Duration: [Calculate role length]
 - Status:
-  🟢 Match
+  🟢 Verified
   OR
   🟡 Minor Variance
   OR
-  🔴 Mismatch
+  🟡 Needs Clarification
+  OR
+  ⚠️ Possible Extraction Issue (if OCR/parsing corruption detected)
+  OR
+  🔴 Major Factual Contradiction (only if provably false)
 
 Analysis:
 - Explain exact discrepancy
 - Mention which source differs
 - Explain severity
 - Explain why it matters
+
+⭐ EXTRACTION-AWARE ASSESSMENT:
+- Do titles look corrupted? → ⚠️ Possible OCR issue
+- Is data missing from LinkedIn? → ⚠️ LinkedIn data unavailable
+- If role < 6 months and omitted from CV → 🟡 Minor Variance (not ⚠️ or 🔴)
+- If role is internship and omitted → 🟡 Minor Variance (not ⚠️ or 🔴)
+- If role > 5 years old and simplified → 🟡 Minor Variance
+- If primary role contradicted with facts → 🔴 Major Contradiction ONLY
+
+⭐ VALIDATION BEFORE FLAGGING:
+Before marking as mismatch, check:
+1. Is text corruption possible? → Mark as extraction issue
+2. Is data legitimately omitted (short-term/old role)? → Mark as minor variance
+3. Is LinkedIn field null/missing? → Mark as data unavailable
+4. Only proceed to contradiction if all else fails
 
 --------------------------------------------------
 
 **ROLE 2 COMPARISON**
 
-- Company:
-- CV Role:
-- LinkedIn Role:
-- CV Dates:
-- LinkedIn Dates:
-- Status:
-  🟢 Match
-  OR
-  🟡 Minor Variance
-  OR
-  🔴 Mismatch
-
-Analysis:
-- Explain exact discrepancy
-- Mention which source differs
-- Explain severity
-- Explain why it matters
+[Same structure as ROLE 1]
 
 Continue for ALL roles.
 
 Examples:
-- 🔴 CV shows Software Engineer at Amazon from Jan 2021–Dec 2022 while LinkedIn shows Sales Associate during same period.
-- 🟡 "SDE" vs "Software Development Engineer" detected — treated as equivalent.
-- 🟡 LinkedIn internship missing from CV — not considered major due to short duration.
+
+GOOD EXTRACTION-AWARE HANDLING:
+- ⚠️ "Amazøn" vs "Amazon" detected — likely OCR character corruption
+- ⚠️ CV omits 3-month internship at LinkedIn — normal resume curation
+- 🟡 Role title abbreviated "SDE" vs full "Software Development Engineer" — standard abbreviation
+- 🔴 CV shows employed at Company A (full-time) same dates LinkedIn shows Company B (full-time) — provable contradiction
 
 After all role comparisons:
 
@@ -889,14 +935,19 @@ Experience Risk Analysis:
 - Total Roles Compared:
 - Fully Matching Roles:
 - Minor Variances:
-- Major Mismatches:
+- Extraction Issues (Not counted as red flags):
+- Major Contradictions (Only true conflicts):
 
 Experience Verdict:
-- 🟢 Fully Matching
+- 🟢 Verified
 OR
-- 🟡 Minor Variance
+- 🟡 Minor Variance (typical resume curation)
 OR
-- 🔴 Major Mismatch
+- 🟡 Needs Clarification
+OR
+- ⚠️ Extraction issues detected (but not candidate risk factors)
+OR
+- 🔴 Major Factual Contradiction (only if provably false)
 
 Reason:
 - Detailed recruiter-style explanation
@@ -910,6 +961,11 @@ Compare:
 - Institution
 - Graduation year
 
+⭐ IMPORTANT: Education omissions are common and typically acceptable:
+- High school omission from CV → Minor or ignore (very common in professional resumes)
+- Graduate degree details may be simplified → Normal variation
+- Older degrees may be de-emphasized → Normal progression
+
 For EACH education comparison use this structure:
 
 --------------------------------------------------
@@ -920,40 +976,45 @@ For EACH education comparison use this structure:
 - CV:
 - LinkedIn:
 - Status:
-  🟢 Match
+  🟢 Verified
   OR
   🟡 Minor Variance
   OR
-  🔴 Mismatch
+  ⚠️ Possible Extraction Issue
+  OR
+  🔴 Major Factual Contradiction
 
 Analysis:
 - Detailed explanation
+
+⭐ EXTRACTION-AWARE ASSESSMENT:
+- Institution name spelling variation → Check if OCR-corrupted
+- Degree name abbreviated differently → 🟡 Minor Variance (B.Tech vs Bachelor of Technology)
+- Graduation date differs by 1-2 months → 🟡 Minor (formatting difference)
+- Missing LinkedIn degree data → ⚠️ LinkedIn field not populated
+- High school omitted from CV → 🟡 Minor or ignore (professional norm, not extraction issue)
 
 --------------------------------------------------
 
 **EDUCATION ENTRY 2**
 
-- Degree:
-- CV:
-- LinkedIn:
-- Status:
-  🟢 Match
-  OR
-  🟡 Minor Variance
-  OR
-  🔴 Mismatch
-
-Analysis:
-- Detailed explanation
+[Same structure as EDUCATION ENTRY 1]
 
 Continue for ALL education entries.
 
+⭐ DETERMINE VERDICT:
+- If only formatting/abbreviation differences: 🟡 Minor Variance
+- If high school simplified or omitted: 🟡 Minor or ignore
+- If degree/institution actually contradicts: 🔴 Contradiction ONLY
+
 Education Verdict:
-- 🟢 Match
+- 🟢 Verified
 OR
-- 🟡 Partial Match
+- 🟡 Minor Variance (normal variations/omissions)
 OR
-- 🔴 Mismatch
+- ⚠️ Extraction issues detected (not high risk)
+OR
+- 🔴 Major Factual Contradiction (only if degree contradicts)
 
 Reason:
 - Detailed explanation
@@ -1000,18 +1061,35 @@ Reason:
 - Detailed explanation
 
 ==================================================
-**STEP 5 — RED FLAGS & RISK INDICATORS 🚨**
+**STEP 5 — RED FLAGS & RISK INDICATORS** 🚨
 ==================================================
 
 List ONLY real structural inconsistencies.
 
+⭐ DO NOT FLAG AS RED:
+- Extraction issues (OCR corruption, null fields)
+- Missing short-term roles
+- Omitted internships
+- Early-career role simplifications
+- Resume curation differences
+
+⭐ ONLY FLAG AS RED IF:
+- Employment overlap contradictions (same company at conflicting times)
+- Completely fabricated companies/degrees
+- Major date conflicts (> 6 months unexplainable gap)
+- Degree inconsistencies (different degree from same school)
+- Identity mismatches
+- Clearly deceptive patterns
+
 Possible issues:
-- Employment overlap contradictions
-- Completely different companies
-- Major date conflicts
-- Degree inconsistencies
-- Missing long-term employment
-- Clearly conflicting job titles
+- 🔴 [Actual Issue] - Employment overlap (both companies full-time same dates)
+- 🔴 [Actual Issue] - Degree mismatch (CV says BA, LinkedIn says BS from same university)
+- 🔴 [Actual Issue] - Company identity (CV says "Google" but doesn't exist)
+
+DO NOT flag as issues:
+- ⚠️ Company name variation (might be extraction issue)
+- ⚠️ Missing optional fields (LinkedIn API limitation)
+- 🟡 Omitted short roles (normal practice)
 
 Format:
 - 🔴 [Issue]
@@ -1019,6 +1097,10 @@ Format:
 
 If none:
 - 🟢 No major red flags detected
+
+If only extraction issues:
+- ⚠️ Some potential extraction issues noted (see above)
+- 🟢 No high-risk indicators detected
 
 ==================================================
 HARD RULES (NON-NEGOTIABLE)
@@ -1059,13 +1141,202 @@ OR
 
 10. Short-term roles under 3 months present only on LinkedIn are NOT red flags.
 
-11. Status should be "Major Mismatch" ONLY if:
-- A role appears fabricated
-- Employment history strongly conflicts
-- Education details contradict each other
-- Identity details strongly conflict
+11. Status should be "Major Factual Contradiction" ONLY if:
+- A role appears demonstrably fabricated
+- Employment history strongly contradicts verifiable facts
+- Education details directly contradict each other
+- Identity details strongly and provably conflict
 
-12. Missing optional details alone do NOT justify major mismatch.
+12. Missing optional details alone do NOT justify major contradiction.
+
+⭐ NEW CLASSIFICATION STATUSES:
+
+🟢 VERIFIED / MATCH
+- Data clearly aligns across both sources
+- No inconsistencies detected
+
+🟡 MINOR VARIANCE
+- Small differences that are normal (wording, formatting)
+- Typical resume curation
+- Acceptable omissions (internships, early-career roles, short-term positions)
+
+🟡 NEEDS CLARIFICATION
+- Moderate inconsistencies exist
+- Unclear timelines
+- Information that could use verification
+- But not provably false
+
+⚠️ POSSIBLE EXTRACTION ISSUE
+- May be OCR error (character corruption, distortion)
+- Parsing problem (incomplete text extraction)
+- API limitation (null LinkedIn fields)
+- NOT a candidate red flag
+- Does NOT trigger high risk scoring
+- Examples:
+  * "Licinus" vs "Licin0s" (likely OCR corruption)
+  * Missing title because LinkedIn API returned null
+  * Partial company name extraction
+
+🔴 MAJOR FACTUAL CONTRADICTION
+- ONLY for provably false or contradictory data
+- Fabricated company that doesn't exist
+- Fake degree from non-existent university
+- Employment overlap with impossible timeline
+- Clearly falsifiable information
+
+==================================================
+IMPROVED RISK SCORING (DETERMINISTIC)
+==================================================
+
+Score is deterministic and recruiter-like:
+
+HIGH RISK (🔴):
+- ONLY for Major Factual Contradictions
+- Falsifiable, provable inconsistencies
+- Never for extraction issues or minor omissions
+
+MEDIUM RISK (🟡):
+- Needs Clarification status
+- Moderate inconsistencies but not contradictions
+- Unclear but not provably false
+
+LOW RISK (🟢):
+- Verified or Minor Variance status
+- Primary data matches
+- Normal resume curation and omissions
+
+🔴 DO NOT assign HIGH RISK for:
+- OCR/parsing errors
+- Missing LinkedIn data
+- Omitted internships or short-term roles
+- Curated resumes
+- Extraction issues
+
+==================================================
+IMPROVED SEVERITY CLASSIFICATION (RECRUITER-LIKE)
+==================================================
+
+⭐ KEY INSIGHT: Candidates routinely omit, curate, and customize resumes. 
+   This is NORMAL professional practice — not a red flag.
+
+MISSING SHORT-TERM ROLES (< 6 months):
+- Internships, fellowships, bootcamps, temporary contracts omitted from CV
+- Classification: 🟡 Minor Variance (or resume curation difference)
+- NOT: 🔴 Major Mismatch
+- Reasoning: Candidates intentionally curate to fit roles and space constraints
+
+MISSING INTERNSHIPS/ENTRY-LEVEL ROLES:
+- Should typically be: 🟡 Minor Variance or 🟡 Resume Curation Difference
+- ONLY 🔴 Major Mismatch if candidate falsely claims conflicting experience elsewhere
+- Example OK: "Internship omitted from CV" → Minor Variance
+- Example PROBLEM: "Internship omitted BUT CV shows employment at conflicting company during internship period" → Major Mismatch
+
+MISSING EDUCATION (High School / Secondary):
+- High school education omitted from CV
+- Classification: 🟡 Minor Variance or ignore completely
+- Reasoning: Extremely common in professional resumes
+- Does NOT significantly impact risk level
+
+MISSING EARLY CAREER ROLES (> 3-5 years ago):
+- Roles from early career history omitted or summarized differently
+- Classification: 🟡 Minor Variance
+- Reasoning: Career progression justifies reframing old roles
+- Does NOT indicate fraud
+
+🔴 MAJOR MISMATCH ONLY FOR ACTUAL FRAUDULENT INDICATORS:
+- Fabricated company that doesn't exist
+- Fake degree from non-existent university
+- Contradictory employment timelines (e.g., two full-time roles same period without overlap explanation)
+- Impossible dates (graduation before high school, etc.)
+- False job title claims contradicted by verifiable data
+- Employment gap explanations that don't align with stated experience
+- Clear intent to deceive in role descriptions
+
+RESUME CURATION IS NOT FRAUD:
+- Different role emphasis on different platforms → Normal, not red flag
+- Tailored descriptions for audience → Normal, not red flag
+- Omitted short-term work → Normal, not red flag
+- Progressive career description → Normal, not red flag
+
+==================================================
+UPDATED CONFIDENCE & RISK SCORING SYSTEM
+==================================================
+
+CONFIDENCE SCORING:
+- Primary roles match: +40-50 points (most important)
+- Education matches: +15-20 points
+- Skills partially align: +10 points
+- Minor omissions: -5 to -10 points (NOT -50)
+- Early career role omissions: -3 to -5 points only
+- Short-term role omissions: -0 to -3 points (minimal impact)
+
+RISK LEVEL GUIDELINES:
+
+🟢 LOW RISK:
+- Primary experiences match
+- Education credentials verified
+- Only minor omissions exist (internships, short roles, old positions)
+- Confidence score: 75%+
+
+🟡 MEDIUM RISK:
+- Moderate inconsistencies in role descriptions
+- Some roles with unclear timelines
+- Missing details on non-primary roles
+- Some skill gaps or variances
+- Confidence score: 60-75%
+
+🔴 HIGH RISK (ONLY FOR):
+- Fabricated or unverifiable data
+- Contradictory employment timelines
+- Impossible dates or overlap issues
+- False claims that can be verified as false
+- Structurally deceptive profile pattern
+- Confidence score: Below 60%
+
+==================================================
+UPDATED LANGUAGE & TONE
+==================================================
+
+Replace aggressive/accusatory wording with professional recruiter style:
+
+OLD:
+- "🔴 High Risk Profile"
+NEW:
+- "🟡 Needs Clarification"
+- "🟡 Moderate Variance Detected"
+
+OLD:
+- "🔴 Major Mismatch"
+NEW:
+- "🟡 Significant Variance"
+- "🟡 Notable Omission (Typical for Resume Curation)"
+
+OLD:
+- "🚨 Red Flag"
+NEW:
+- "⚠️ Attention Point"
+- "⚠️ Requires Clarification"
+
+OLD:
+- "Suspicious inconsistency"
+NEW:
+- "Resume variance consistent with professional curation"
+
+OLD:
+- "False or misleading information"
+NEW:
+- "Information that differs between platforms (common practice)"
+
+FINAL VERDICT LANGUAGE:
+
+Instead of:
+- "HIGH RISK PROFILE"
+
+Use:
+- "VERIFIED" (if core data aligns)
+- "VERIFIED WITH MINOR VARIANCE" (if small omissions/differences)
+- "NEEDS CLARIFICATION" (if moderate inconsistencies)
+- "FLAGGED FOR REVIEW" (only for actual fraud indicators)
 
 ==================================================
 FUZZY MATCHING & NORMALIZATION RULES
@@ -1164,10 +1435,19 @@ Guideline:
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
-      generationConfig: { temperature: 0.2, maxOutputTokens: 8192 },
+      // ⭐ DETERMINISTIC CONFIGURATION FOR VERIFICATION SYSTEM
+      // Set temperature to 0 for maximum consistency across runs
+      // Verification requires stable, reproducible results - NOT creativity
+      generationConfig: { 
+        temperature: 0, // 🔴 CHANGED: 0.2 → 0 for deterministic, stable output
+        topP: 0.8, // ⭐ NEW: Limit sampling diversity
+        topK: 20, // ⭐ NEW: Limit candidate tokens
+        maxOutputTokens: 8192 
+      },
     });
 
     console.log('\n[STEP 8] Calling Gemini API with model: gemini-2.5-flash...');
+    console.log('[STEP 8] Configuration: DETERMINISTIC (temperature: 0, topP: 0.8, topK: 20)');
     console.log('[STEP 8] Prompt length:', prompt?.length || 0);
 
     // Validate cvBase64 before sending

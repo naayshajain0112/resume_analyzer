@@ -76,11 +76,14 @@ async function analyzeDocuments(cvText, linkedinText) {
     // We use "gemini-2.5-flash" — it's fast, capable, and cost-effective.
     // The responseMimeType is set to "application/json" so the model
     // returns ONLY valid JSON without any markdown wrappers.
+    // ⭐ DETERMINISTIC CONFIG: temperature: 0 for stable, reproducible verification results
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
       generationConfig: {
         responseMimeType: 'application/json',
-        temperature: 0.1, // Low temperature = more deterministic, factual output
+        temperature: 0, // 🔴 CHANGED: 0.1 → 0 for maximum consistency and determinism
+        topP: 0.8, // ⭐ NEW: Reduce sampling diversity for stable results
+        topK: 20, // ⭐ NEW: Limit candidate tokens for deterministic output
       },
     });
 

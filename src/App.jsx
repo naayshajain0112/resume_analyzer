@@ -537,7 +537,7 @@ function App() {
               </div>
 
               <p className="text-slate-400 text-xs mb-6">
-                Please check that the CV file is a valid PDF, the LinkedIn URL is valid, and the backend server is running on {API_URL}
+                Please check that the CV file is a valid PDF and also the LinkedIn URL is valid, and the backend server is running on {API_URL}
               </p>
 
               {/* Reset button to go back */}

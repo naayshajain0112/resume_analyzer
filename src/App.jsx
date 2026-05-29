@@ -3,6 +3,7 @@ import InputForm from './components/InputForm';
 import ReportRenderer from './components/ReportRenderer';
 import { exportComponentToPDF } from './utils/pdfExport';
 import { API_URL, API_ENDPOINTS } from './config';
+import logo from './assets/logo.png';
 
 /**
  * Standalone helper function to convert a File to base64 Data URL
@@ -262,9 +263,9 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 flex flex-col justify-between">
+    <div className="min-h-screen px-4 sm:px-6 lg:px-8 flex flex-col justify-start gap-0">
       {/* Top Navigation / Brand */}
-      <header className="w-full max-w-7xl mx-auto mb-10">
+      <header className="w-full max-w-7xl mx-auto mb-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <div className="px-4 py-2 rounded-2xl bg-slate-900/60 border border-slate-800/80 shadow-lg shadow-indigo-500/5 backdrop-blur-md flex items-center justify-center hover:border-slate-700/80 transition-all duration-300">
@@ -273,18 +274,23 @@ function App() {
               </span>
             </div>
           </div>
+          <img 
+            src={logo} 
+            alt="The Growth Partners" 
+            style={{ height: '250px', width: 'auto', display: 'block' }} 
+          />
         </div>
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-grow flex items-center justify-center py-6">
+      <main className="flex items-start justify-center pt-0 -mt-2">
         
         {/* INPUT STATE */}
         {appState === 'input' && (
           <div className="w-full flex flex-col items-center">
             {/* Title / Hero */}
-            <div className="text-center mb-8 max-w-xl animate-float">
-              <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight mb-4">
+            <div className="text-center mb-0 max-w-xl animate-float">
+              <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight mb-1">
                 <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-200 via-purple-300 to-pink-200">
                   CV vs. LinkedIn
                 </span>
@@ -295,7 +301,9 @@ function App() {
               </h1>
             </div>
             
-            <InputForm onSubmit={handleFormSubmit} />
+            <div className="mt-0">
+              <InputForm onSubmit={handleFormSubmit} />
+            </div>
           </div>
         )}
 

@@ -48,11 +48,18 @@ export default function InputForm({ onSubmit }) {
 
   // Validate that the file is a PDF, then update the CV state
   const validateAndSetFile = (selectedFile) => {
-    // Only accept PDF files
-    const validTypes = ['application/pdf'];
+    // Only accept PDF or DOCX files
+    const validTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
     const fileExtension = selectedFile.name.split('.').pop().toLowerCase();
     
-    if (validTypes.includes(selectedFile.type) || fileExtension === 'pdf') {
+    if (
+      validTypes.includes(selectedFile.type) ||
+      fileExtension === 'pdf' ||
+      fileExtension === 'docx'
+    ) {
       // File is valid - store it
       setCvFile(selectedFile);
       setErrors((prev) => ({ ...prev, cv: null }));
@@ -60,9 +67,27 @@ export default function InputForm({ onSubmit }) {
       // Set an error if the file type is invalid
       setErrors((prev) => ({ 
         ...prev, 
-        cv: 'Only PDF files are allowed. Please upload a PDF document.' 
+        cv: 'Only PDF and DOCX files are allowed. Please upload a PDF or DOCX document.' 
       }));
     }
+  };
+
+  const getFileTypeBadge = (file) => {
+    const isDocx = file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.name.toLowerCase().endsWith('.docx');
+
+    if (isDocx) {
+      return (
+        <span className="inline-flex items-center rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-300">
+          DOCX
+        </span>
+      );
+    }
+
+    return (
+      <span className="inline-flex items-center rounded-full border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-red-300">
+        PDF
+      </span>
+    );
   };
 
   // Validate form and submit - called when user clicks "Run Consistency Verification" button
@@ -154,7 +179,7 @@ export default function InputForm({ onSubmit }) {
         {/* CV File Drag and Drop Zone */}
         <div>
           <label className="block text-sm font-semibold text-slate-300 mb-2">
-            Upload CV (PDF)
+            Upload CV (PDF or DOCX)
           </label>
           <div
             onDragEnter={handleDrag}
@@ -174,7 +199,7 @@ export default function InputForm({ onSubmit }) {
               type="file"
               ref={cvFileInputRef}
               onChange={handleFileChange}
-              accept=".pdf,application/pdf"
+              accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               className="hidden"
             />
 
@@ -189,7 +214,7 @@ export default function InputForm({ onSubmit }) {
                   Drag CV here, or <span className="text-indigo-400 group-hover:text-indigo-300 transition-colors">browse</span>
                 </p>
                 <p className="mt-1.5 text-xs text-slate-500">
-                  PDF format only (Max 10MB)
+                  PDF or DOCX format only (Max 10MB)
                 </p>
               </div>
             ) : (
@@ -201,9 +226,12 @@ export default function InputForm({ onSubmit }) {
                     </svg>
                   </div>
                   <div className="text-left">
-                    <p className="text-sm font-semibold text-slate-200 truncate max-w-md">
-                      {cvFile.name}
-                    </p>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <p className="text-sm font-semibold text-slate-200 truncate max-w-md">
+                        {cvFile.name}
+                      </p>
+                      {getFileTypeBadge(cvFile)}
+                    </div>
                     <p className="text-xs text-slate-500 font-medium">
                       {(cvFile.size / (1024 * 1024)).toFixed(2)} MB
                     </p>

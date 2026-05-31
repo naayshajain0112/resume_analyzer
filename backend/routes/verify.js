@@ -1,5 +1,7 @@
 const express = require('express');
 const multer = require('multer');
+const path = require('path');
+const mammoth = require('mammoth');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const router = express.Router();
@@ -19,8 +21,19 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'application/pdf') cb(null, true);
-    else cb(new Error('Only PDF files are allowed'), false);
+    const allowedMimeTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/msword'
+    ];
+    const allowedExtensions = ['.pdf', '.docx', '.doc'];
+    const fileExtension = path.extname(file.originalname).toLowerCase();
+
+    if (allowedMimeTypes.includes(file.mimetype) || allowedExtensions.includes(fileExtension)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type: Only PDF and DOCX files are allowed'), false);
+    }
   },
 });
 
@@ -510,13 +523,17 @@ router.post('/verify', upload.single('cv'), async (req, res) => {
       });
     }
 
-    // ✅ VALIDATE: CV file should be a PDF
-    if (cvFile.mimetype !== 'application/pdf') {
+    // ✅ VALIDATE: CV file should be a PDF or DOCX
+    if (
+      cvFile.mimetype !== 'application/pdf' &&
+      cvFile.mimetype !== 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' &&
+      cvFile.mimetype !== 'application/msword'
+    ) {
       console.log('[VALIDATION ERROR] Invalid file type:', cvFile.mimetype);
       return res.status(400).json({
         success: false,
-        error: 'Only PDF files are allowed.',
-        details: `Expected "application/pdf", got "${cvFile.mimetype}"`,
+        error: 'Only PDF and DOCX files are allowed.',
+        details: `Expected PDF or DOCX mimetype, got "${cvFile.mimetype}"`,
         filename: cvFile.originalname
       });
     }
@@ -1458,10 +1475,26 @@ Guideline:
     console.log('[STEP 8] CV Base64 validated - length:', cvBase64.length);
     console.log('[STEP 8] Request payload prepared, sending to Gemini...');
 
-    const result = await model.generateContent([
-      { inlineData: { mimeType: 'application/pdf', data: cvBase64 } },
-      { text: prompt },
-    ]);
+    let extractedText = '';
+    let result;
+
+    if (
+      req.file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      req.file.originalname.toLowerCase().endsWith('.docx')
+    ) {
+      const docxResult = await mammoth.extractRawText({ buffer: req.file.buffer });
+      extractedText = docxResult.value;
+
+      result = await model.generateContent([
+        { text: extractedText },
+        { text: prompt },
+      ]);
+    } else {
+      result = await model.generateContent([
+        { inlineData: { mimeType: 'application/pdf', data: cvBase64 } },
+        { text: prompt },
+      ]);
+    }
 
     console.log('\n[STEP 9] Gemini response received');
 
@@ -1574,11 +1607,11 @@ router.use((err, req, res, next) => {
     });
   }
 
-  if (err.message?.includes('Only PDF files are allowed')) {
+  if (err.message?.includes('Invalid file type: Only PDF and DOCX files are allowed')) {
     console.error('[MULTER ERROR] Invalid file type:', err.message);
     return res.status(400).json({
       success: false,
-      error: 'Only PDF files are allowed',
+      error: 'Only PDF and DOCX files are allowed',
       details: err.message
     });
   }

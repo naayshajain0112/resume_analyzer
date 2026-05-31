@@ -8,6 +8,9 @@
 
 const express = require('express');
 const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
+const mammoth = require('mammoth');
 const router = express.Router();
 
 // Import our custom utility helper functions
@@ -17,10 +20,16 @@ const { analyzeResumeWithGemini } = require('../utils/gemini');
 // ==========================================
 // 1. CONFIGURE MULTER UPLOAD STORAGE
 // ==========================================
-// We use memoryStorage for a clean, serverless-friendly approach.
-// Memory storage keeps the uploaded file inside process memory as a binary Buffer,
-// meaning we don't write files to the 'uploads/' folder on disk, preventing clutter.
-const storage = multer.memoryStorage();
+// Use disk storage so PDF and DOCX files can be inspected by type-specific parsers.
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, path.join(__dirname, '../uploads'));
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, `${file.fieldname}-${uniqueSuffix}-${file.originalname}`);
+  }
+});
 
 // ALTERNATIVE (Disk Storage): If you would rather save files to the 'uploads/' folder:
 /*
@@ -35,18 +44,22 @@ const storage = multer.diskStorage({
 });
 */
 
-// Set up the file size limit (e.g., 5MB) and validate that uploaded files are indeed PDFs.
+// Set up the file size limit (e.g., 5MB) and validate that uploaded files are PDFs or DOCX files.
 const upload = multer({
   storage: storage,
   limits: {
     fileSize: 5 * 1024 * 1024 // 5 Megabytes
   },
   fileFilter: (req, file, cb) => {
-    // Only accept PDF files
-    if (file.mimetype === 'application/pdf') {
+    const allowed = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+
+    if (allowed.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Only PDF format resumes are allowed!'), false);
+      cb(new Error('Only PDF and DOCX files are allowed'), false);
     }
   }
 });
@@ -63,7 +76,7 @@ router.post('/analyze', upload.single('resume'), async (req, res, next) => {
     if (!req.file) {
       return res.status(400).json({
         status: 'error',
-        message: 'Missing resume upload file. Please upload a valid PDF.'
+        message: 'Missing resume upload file. Please upload a valid PDF or DOCX.'
       });
     }
 
@@ -73,14 +86,30 @@ router.post('/analyze', upload.single('resume'), async (req, res, next) => {
     console.log(`[Resume Route] File received: ${req.file.originalname} (${req.file.size} bytes)`);
     console.log(`[Resume Route] Job description provided: ${jobDescription ? 'Yes' : 'No'}`);
 
-    // 3. Extract text content from PDF buffer
-    console.log('[Resume Route] Extracting text from PDF...');
-    const extractedText = await extractTextFromPDF(req.file.buffer);
+    // 3. Extract text content based on file type
+    const uploadedFilePath = req.file.path;
+    const fileType = req.file.mimetype;
+    let extractedText = '';
+
+    if (fileType === 'application/pdf') {
+      console.log('[Resume Route] Extracting text from PDF...');
+      const pdfBuffer = fs.readFileSync(uploadedFilePath);
+      extractedText = await extractTextFromPDF(pdfBuffer);
+    } else if (fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      console.log('[Resume Route] Extracting text from DOCX...');
+      const result = await mammoth.extractRawText({ path: uploadedFilePath });
+      extractedText = result.value;
+    } else {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Only PDF and DOCX files are allowed'
+      });
+    }
 
     if (!extractedText || extractedText.trim().length === 0) {
       return res.status(400).json({
         status: 'error',
-        message: 'Could not extract text content from the uploaded PDF. The PDF might be scanned or empty.'
+        message: 'Could not extract text content from the uploaded file. The document might be scanned, corrupted, or empty.'
       });
     }
 
